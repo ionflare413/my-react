@@ -1,25 +1,30 @@
-import logo from './logo.svg';
-import './App.css';
+/** @jsxRuntime classic /
+/** @jsx jsx */
+// import { useRef } from 'react';
+// import { Canvas, useFrame } from '@react-three/fiber';
+// //import { css, jsx } from '@emotion/core';
+// import { jsx, css, Global  } from '@emotion/react'
+// import emotionReset from 'emotion-reset';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+import { css, jsx, Global } from '@emotion/react';
+import emotionReset from 'emotion-reset';
+import { Work } from './work';
+
+const globalStyles = css`
+    ${emotionReset}
+    *, *::after, *::before {
+        box-sizing: border-box;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased;
+        font-smoothing: antialiased;
+    }
+`;
+
+const App = () => (
+    <div>
+        <Global styles={globalStyles} />
+        <Work />
     </div>
-  );
-}
+);
 
 export default App;
