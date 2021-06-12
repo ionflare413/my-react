@@ -13,6 +13,11 @@ export function HexMap(props) {
     //store method
     // vertrice => [ [1,2,3], [1,2,3], ...]
     // face => [ 1,2,3, ...]
+    //const itemEls = useRef(new Array())
+    // var itemEls =  useRef();
+    // useEffect(() => {
+    //     console.log(itemEls);
+    //   }, []);
 
     const [hexMetric, setHexMetric] = useState({
         outerRadius: props.outerRadius,
@@ -30,35 +35,6 @@ export function HexMap(props) {
         [0, 0, hexMetric.outerRadius]
     ]
 
-
-    var cell_core_vt = cell_outer_vt.map(a => [
-        a[0] * hexMetric.hexCoreScale,
-        a[1] * hexMetric.hexCoreScale,
-        a[2] * hexMetric.hexCoreScale,
-    ])
-
-
-    var cell_bridge_vt = [];
-    for (var i = 0; i < cell_outer_vt.length - 1; i++) {
-        var cb = getBridge_OutterPoints(cell_outer_vt[i], cell_outer_vt[i + 1], hexMetric.hexCoreScale);
-        // console.log(cb);
-        cell_bridge_vt.push(cb[0]);
-        cell_bridge_vt.push(cb[1]);
-    }
-
-    var cell_core_vt = cell_outer_vt.map(a => [
-        a[0] * hexMetric.hexCoreScale,
-        a[1] * hexMetric.hexCoreScale,
-        a[2] * hexMetric.hexCoreScale,
-    ])
-
-
-    //updateCellVertrice(cell_core_vt, 2);
-    var cell_core_face = triangulateHexCore(cell_core_vt);
-
-
-    var cell_bridge_face = triangulateBridge(cell_core_vt, cell_bridge_vt);
-    console.log(cell_bridge_face);
     /* bridge face indices compare to sides
           
               /\
@@ -81,31 +57,6 @@ export function HexMap(props) {
     */
 
 
-    var onChildClick = (e) => {
-
-        updateCellVertrice(cell_core_vt, 2);
-        cell_core_face = triangulateHexCore(cell_core_vt);
-        cell_bridge_face = triangulateBridge(cell_core_vt, cell_bridge_vt)
-
-        //console.log(cellArray.hexCells[e.z][e.x].faces.core)
-
-        cellArray.hexCells[e.z][e.x].faces.core = cell_core_face;
-        cellArray.hexCells[e.z][e.x].faces.bridge = {
-            SW: cell_bridge_face[0],
-            W: cell_bridge_face[1],
-            NW: cell_bridge_face[2],
-            NE: cell_bridge_face[3],
-            E: cell_bridge_face[4],
-            SE: cell_bridge_face[5]
-        }
-
-
-        // cellArray.hexCells[e.z][e.x].faces.core[1] = 2;
-        // cellArray.hexCells[e.z][e.x].faces.core[4] = 2;
-        // cellArray.hexCells[e.z][e.x].faces.core[7] = 2;
-
-
-    }
 
     var hexCells = [];
     //shift  odd  z idx to the right(x -> +)
@@ -119,20 +70,27 @@ export function HexMap(props) {
                     (z % 2 == 0) ?
                         [x * 2 * hexMetric.innerRadius, 0, z * 1.5 * hexMetric.outerRadius]
                         : [(x * 2 * hexMetric.innerRadius) + hexMetric.innerRadius, 0, z * 1.5 * hexMetric.outerRadius],
-                vertrices: {
-                    outer: cell_outer_vt,
-                    core: cell_core_vt,
-                    bridge: cell_bridge_vt
+                vertices: {
+                    outer: cell_outer_vt.map(a => a),
+                    core: cell_outer_vt.map(a => [
+                        a[0] * hexMetric.hexCoreScale,
+                        a[1] * hexMetric.hexCoreScale,
+                        a[2] * hexMetric.hexCoreScale,
+                    ])
+                    //bridge: cell_bridge_vt
                 },
                 faces: {
-                    core: cell_core_face,
+                    core: null,
                     bridge: {
-                        SW: cell_bridge_face[0],
-                        W: cell_bridge_face[1],
-                        NW: cell_bridge_face[2],
-                        NE: cell_bridge_face[3],
-                        E: cell_bridge_face[4],
-                        SE: cell_bridge_face[5]
+                        E : null,
+                        SE : null,
+                        SW : null
+                        // SW: cell_bridge_face[0],
+                        // W: cell_bridge_face[1],
+                        // NW: cell_bridge_face[2],
+                        // NE: cell_bridge_face[3],
+                        // E: cell_bridge_face[4],
+                        // SE: cell_bridge_face[5]
                     }
                 },
                 neighbor: {
@@ -143,33 +101,134 @@ export function HexMap(props) {
                     E: null,
                     SE: null
                 },
-
             }
-
             c.push(info)
         }
         hexCells.push(c)
     }
     setNeighbor(hexCells);
-    const [cellArray, setCellArray] = useState({ hexCells });
 
-    var hc = cellArray.hexCells.map(a => a.map(b => <HexCell info={b} childClickEv={onChildClick} />))
-    return <group>{hc}</group>
-    // return <HexCell info={cellArray.hexCells[0][0]} childClickEv={onChildClick}/>
-    //return <group></group>
+    for (var z = 0; z < props.size.z; z++) {
+        for (var x = 0; x < props.size.x; x++) {
+            genCoreFace(hexCells, x, z);
+            genBridgeFace(hexCells, x, z, hexMetric);
+        }
+    }
+  
+
+    const [cellArray, setCellArray] = useState( hexCells );
+
+
+    
+    var onChildClick = (e) => {
+        console.log(hexCells[e.z][e.x].neighbor);
+        updateCell(hexCells, hexMetric, e.x, e.z, 1);
+     //   console.log(childRef.current[0]);
+        console.log('INPUT VALUE: ', inputRef.current?.value);
+        
+    }
+
+    const onClick = () => {
+        console.log('INPUT VALUE: ', inputRef.current?.value);
+    }
+    // var hc = [];
+    // var i = 0;
+    // for(var z =0; z< hexCells.length; z++ ){
+    //     for(var x =0; x< hexCells[z].length; x++)
+    //     {
+    //         hc.push(<HexCell info={hexCells[z][x]} ref={(element) => itemEls.current.push(element)} key={i} childClickEv={onChildClick} />)
+    //         i++;
+    //     }
+    // }
+    // return <group>{hc}</group>
+
+    // return (hexCells.map(a => a.map(b => {
+    //             return <HexCell ref={itemEls} info={b} childClickEv={onChildClick} /> 
+    //     } )))
+    // const childRef = useRef([]);
+    // childRef.current[0] = <HexCell  info={hexCells[0][0]} childClickEv={onChildClick} />
+    // return <HexCell ref={childRef[0]}  info={hexCells[0][0]} childClickEv={onChildClick} />;
+
+    const inputRef = useRef(null);
+    inputRef = <HexCell   info={hexCells[0][0]} childClickEv={onChildClick} />
+    return <HexCell  ref={inputRef}   info={hexCells[0][0]} childClickEv={onChildClick} />;
+
+    // return (
+    //     {hexCells.map((item) => {
+    //       const getRef = (element) => (itemsEls.current.push(element))
+    //       return <p key={getRef}>{item}</p>
+    //     })}
+    //   )
 
 }
 
 
-function updateCellVertrice(original_vt, newY) {
+function updateCell(arr, hexMetric, x, z, newY) {
 
     //update cell core
-    for (var i = 0; i < original_vt.length; i++) {
-        original_vt[i][1] = newY;
+    for (var i = 0; i < arr[z][x].vertices.core.length; i++) {
+        arr[z][x].vertices.core[i][1] = newY;
     }
-    //update bridge
+    genCoreFace(arr, x, z);
+
+
+    genBridgeFace(arr, x, z, hexMetric);
+    if(arr[z][x].neighbor.W !== null)
+    {
+        genBridgeFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric);
+    }
+    
+
+
 }
 
+function genCoreFace(arr, x, z){
+    arr[z][x].faces.core = triangulateHexCore(arr[z][x].vertices.core)
+}
+
+
+function genBridgeFace(arr, x, z, hexMetric){
+    if(arr[z][x].neighbor.E !== null){
+        arr[z][x].faces.bridge.E = triangulateBridge(
+            arr[z][x].vertices.core[4], 
+            arr[z][x].vertices.core[5],
+            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].vertices.core[2],
+            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].vertices.core[1],
+            [2 * hexMetric.innerRadius, 0, 0]
+        )
+    }
+    if(arr[z][x].neighbor.SE !== null){
+        arr[z][x].faces.bridge.SE = triangulateBridge(
+            arr[z][x].vertices.core[5], 
+            arr[z][x].vertices.core[6],
+            arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].vertices.core[3],
+            arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].vertices.core[2],
+            [hexMetric.innerRadius, 0, 1.5* hexMetric.outerRadius]
+        )
+    }
+    if(arr[z][x].neighbor.SW !== null){
+        arr[z][x].faces.bridge.SW = triangulateBridge(
+            arr[z][x].vertices.core[0], 
+            arr[z][x].vertices.core[1],
+            arr[arr[z][x].neighbor.SW.z][arr[z][x].neighbor.SW.x].vertices.core[4],
+            arr[arr[z][x].neighbor.SW.z][arr[z][x].neighbor.SW.x].vertices.core[3],
+            [-hexMetric.innerRadius, 0, 1.5* hexMetric.outerRadius]
+        )
+    }
+}
+
+function triangulateBridge(ori_idx_1, ori_idx_2, target_idx_1, target_idx_2, offset) {
+    var bf = [];
+        bf.push(target_idx_1[0] +  offset[0] );     bf.push(target_idx_1[1]);   bf.push(target_idx_1[2] + offset[2]);
+        bf.push(ori_idx_1[0]);                      bf.push(ori_idx_1[1]);      bf.push(ori_idx_1[2]);
+        bf.push(target_idx_2[0] +  offset[0] );     bf.push(target_idx_2[1]);   bf.push(target_idx_2[2] + offset[2]);
+
+        bf.push(target_idx_2[0] +  offset[0] );     bf.push(target_idx_2[1]);   bf.push(target_idx_2[2] + offset[2]);
+        bf.push(ori_idx_1[0]);                      bf.push(ori_idx_1[1]);      bf.push(ori_idx_1[2]);
+        bf.push(ori_idx_2[0]);                      bf.push(ori_idx_2[1]);      bf.push(ori_idx_2[2]);
+
+    return bf;
+}
 
 
 function triangulateHexCore(cell_core_vt) {
@@ -183,26 +242,8 @@ function triangulateHexCore(cell_core_vt) {
 }
 
 
-function triangulateBridge(cell_core_vt, cell_bridge_vt) {
-    var res = [];
-    for (var i = 0; i < cell_core_vt.length - 1; i++) {
-        var bf = [];
-        bf.push(cell_bridge_vt[i * 2][0]); bf.push(cell_bridge_vt[i * 2][1]); bf.push(cell_bridge_vt[i * 2][2]);
-        bf.push(cell_core_vt[i][0]); bf.push(cell_core_vt[i][1]); bf.push(cell_core_vt[i][2]);
-        bf.push(cell_bridge_vt[(i * 2) + 1][0]); bf.push(cell_bridge_vt[(i * 2) + 1][1]); bf.push(cell_bridge_vt[(i * 2) + 1][2]);
-
-        bf.push(cell_bridge_vt[(i * 2) + 1][0]); bf.push(cell_bridge_vt[(i * 2) + 1][1]); bf.push(cell_bridge_vt[(i * 2) + 1][2]);
-        bf.push(cell_core_vt[i][0]); bf.push(cell_core_vt[i][1]); bf.push(cell_core_vt[i][2]);
-        bf.push(cell_core_vt[i + 1][0]); bf.push(cell_core_vt[i + 1][1]); bf.push(cell_core_vt[i + 1][2]);
-        res.push(bf);
-    }
-    return res;
-}
-
 
 function setNeighbor(arr) {
-
-    console.log(arr.length);
     for (var z = 0; z < arr.length; z++) {
         for (var x = 0; x < arr[z].length; x++) {
             //set E and W
@@ -266,7 +307,8 @@ function setNeighbor(arr) {
     }
 
 }
-function updateVertrices() {
+
+function updatevertices() {
 
 }
 function updateFaces() {
@@ -275,8 +317,21 @@ function updateFaces() {
 
 export function HexCell(props) {
 
+
+    function test(){
+        console.log('printing from child function');
+    }
+
+    const printSomething = () =>{
+        console.log('printing from child function')
+     }
+    // useEffect(() => {
+    //     console.log("555");
+    //   })
+    
+    const [cellInfo, setCellInfo] = useState(false)
     var ss = [];
-    props.info.vertrices.outer.forEach(a => {
+    props.info.vertices.outer.forEach(a => {
         ss.push(a[0]); ss.push(a[1]); ss.push(a[2]);
     });
 
@@ -294,9 +349,10 @@ export function HexCell(props) {
     return (
         <group position={props.info.position}>
             <mesh
-                onClick={(e) => props.childClickEv(props.info.idx)}
-                onPointerOver={(e) => setHover(true)}
-                onPointerOut={(e) => setHover(false)} >
+                onClick={(e) =>{ props.childClickEv(props.info.idx); setCellInfo(!cellInfo)}}
+                // onPointerOver={(e) => setHover(true)}
+                // onPointerOut={(e) => setHover(false)} 
+                >
                 <bufferGeometry attach="geometry" >
                     <bufferAttribute
                         attachObject={['attributes', 'position']}
@@ -306,7 +362,8 @@ export function HexCell(props) {
                         onUpdate={update}
                     />
                 </bufferGeometry>
-                <meshBasicMaterial attach="material" color={hovered ? 'hotpink' : 'orange'} />
+                {/* <meshBasicMaterial attach="material" color={hovered ? 'hotpink' : 'orange'} /> */}
+                <meshBasicMaterial attach="material" color='orange' />
             </mesh>
             {props.info.neighbor.SW && <mesh>
                 <bufferGeometry attach="geometry" >
@@ -320,7 +377,7 @@ export function HexCell(props) {
                 </bufferGeometry>
                 <meshBasicMaterial attach="material" color='blue' />
             </mesh>}
-            {props.info.neighbor.W && <mesh>
+            {/* {props.info.neighbor.W && <mesh>
                 <bufferGeometry attach="geometry" >
                     <bufferAttribute
                         attachObject={['attributes', 'position']}
@@ -355,7 +412,7 @@ export function HexCell(props) {
                     />
                 </bufferGeometry>
                 <meshBasicMaterial attach="material" color='blue' />
-            </mesh>}
+            </mesh>} */}
             {props.info.neighbor.E && <mesh>
                 <bufferGeometry attach="geometry" >
                     <bufferAttribute
@@ -402,49 +459,9 @@ export function HexCell(props) {
 
 
 
-function getBridge_OutterPoints(outter_v1, outter_v2, hexcore_size_percent) {
-    // v1 = less clock wise 
-    // direction v1-> v2 clockwise
-    // outter_v1 = hex cell edge of one side v1
-    // outter_v1 = hex cell edge of one side v2
-    // hexcore_size_percent = size of hexcore compare to max size hex cell (75% = 0.75)
-    // var vector_out1_out2 = [(outter_v2[0] - outter_v1[0]) / 2, (outter_v2[1] - outter_v1[1]) / 2, (outter_v2[2] - outter_v1[2]) / 2];
-    // var outter_mid_point = [outter_v1[0] + vector_out1_out2[0], outter_v1[1] + vector_out1_out2[1], outter_v1[2] + vector_out1_out2[2]];
-
-
-    var vector_out1_out2 = [(outter_v2[0] - outter_v1[0]) / 2, (outter_v2[1] - outter_v1[1]) / 2, (outter_v2[2] - outter_v1[2]) / 2];
-    var outter_mid_point = [outter_v1[0] + vector_out1_out2[0], outter_v1[1] + vector_out1_out2[1], outter_v1[2] + vector_out1_out2[2]];
-
-    var vector_midP_out1 = [
-        outter_v1[0] - outter_mid_point[0],
-        outter_v1[1] - outter_mid_point[1],
-        outter_v1[2] - outter_mid_point[2]
-    ];
-
-    var vector_midP_out2 = [
-        outter_v2[0] - outter_mid_point[0],
-        outter_v2[1] - outter_mid_point[1],
-        outter_v2[2] - outter_mid_point[2]
-    ];
-    var res_point_1 = [
-        outter_mid_point[0] + (vector_midP_out1[0] * hexcore_size_percent),
-        outter_mid_point[1] + (vector_midP_out1[1] * hexcore_size_percent),
-        outter_mid_point[2] + (vector_midP_out1[2] * hexcore_size_percent)
-    ]
-
-    var res_point_2 = [
-        outter_mid_point[0] + (vector_midP_out2[0] * hexcore_size_percent),
-        outter_mid_point[1] + (vector_midP_out2[1] * hexcore_size_percent),
-        outter_mid_point[2] + (vector_midP_out2[2] * hexcore_size_percent)
-    ]
-
-
-
-    return [res_point_1, res_point_2];
-}
 
 function HexCore(props) {
-
+    
 }
 
 
