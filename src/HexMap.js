@@ -1,7 +1,7 @@
 
 import React, { useCallback, useImperativeHandle, useRef, useMemo, useState, useEffect, createRef } from 'react'
 import ReactDOM from 'react-dom'
-//import { HexCell } from './HexCell'
+import { HexCell } from './HexCell'
 import * as THREE from 'three'
 import { Vector3 } from 'three';
 // import { HexCell } from './HexCell';
@@ -13,11 +13,6 @@ export function HexMap(props) {
     //store method
     // vertrice => [ [1,2,3], [1,2,3], ...]
     // face => [ 1,2,3, ...]
-    //const itemEls = useRef(new Array())
-    // var itemEls =  useRef();
-    // useEffect(() => {
-    //     console.log(itemEls);
-    //   }, []);
 
     const [hexMetric, setHexMetric] = useState({
         outerRadius: props.outerRadius,
@@ -57,7 +52,7 @@ export function HexMap(props) {
     */
 
 
-    var refArr =[]
+    var refArr = []
     var hexCells = [];
     //shift  odd  z idx to the right(x -> +)
     for (var z = 0; z < props.size.z; z++) {
@@ -78,6 +73,19 @@ export function HexMap(props) {
                         a[1] * hexMetric.hexCoreScale,
                         a[2] * hexMetric.hexCoreScale,
                     ])
+                },
+                mainColor: new THREE.Color('orange'),
+                vertexColor: {
+                    core: null,
+                    bridge: {
+                        E: null,
+                        SE: null,
+                        SW: null
+                    },
+                    joint: {
+                        NE: null,
+                        SE: null
+                    }
                 },
                 faces: {
                     core: null,
@@ -113,8 +121,8 @@ export function HexMap(props) {
     for (var z = 0; z < props.size.z; z++) {
         for (var x = 0; x < props.size.x; x++) {
             genCoreFace(hexCells, x, z);
-            genBridgeFace(hexCells, x, z, hexMetric);
-            genJointFace(hexCells, x, z, hexMetric);
+            genBridge_Face_vtColor(hexCells, x, z, hexMetric);
+            genJoint_Face_vtColor(hexCells, x, z, hexMetric);
         }
     }
 
@@ -123,18 +131,21 @@ export function HexMap(props) {
 
 
     var onChildClick = (e) => {
-        updateCell(hexCells, hexMetric, e.x, e.z, hexCells[e.z][e.x].vertices.core[0][1]+1);
+
+        hexCells[e.z][e.x].mainColor = new THREE.Color('red');
+
+        updateCell(hexCells, hexMetric, e.x, e.z, hexCells[e.z][e.x].vertices.core[0][1] + 1);
         //inputRef.current?.coolAlert()
-        if(hexCells[e.z][e.x].neighbor.W !== null){
+        if (hexCells[e.z][e.x].neighbor.W !== null) {
             refArr[hexCells[e.z][e.x].neighbor.W.z][hexCells[e.z][e.x].neighbor.W.x].current?.coolAlert();
         }
-        if(hexCells[e.z][e.x].neighbor.NW !== null){
+        if (hexCells[e.z][e.x].neighbor.NW !== null) {
             refArr[hexCells[e.z][e.x].neighbor.NW.z][hexCells[e.z][e.x].neighbor.NW.x].current?.coolAlert();
         }
-        if(hexCells[e.z][e.x].neighbor.NE !== null){
+        if (hexCells[e.z][e.x].neighbor.NE !== null) {
             refArr[hexCells[e.z][e.x].neighbor.NE.z][hexCells[e.z][e.x].neighbor.NE.x].current?.coolAlert();
         }
-        if(hexCells[e.z][e.x].neighbor.SW !== null){
+        if (hexCells[e.z][e.x].neighbor.SW !== null) {
             refArr[hexCells[e.z][e.x].neighbor.SW.z][hexCells[e.z][e.x].neighbor.SW.x].current?.coolAlert();
         }
     }
@@ -142,12 +153,13 @@ export function HexMap(props) {
     var hc = [];
     for (var z = 0; z < hexCells.length; z++) {
         for (var x = 0; x < hexCells[z].length; x++) {
-            hc.push(<HexCell ref={refArr[z][x]} info={hexCells[z][x]}  childClickEv={onChildClick} />)
-           
+            hc.push(<HexCell ref={refArr[z][x]} info={hexCells[z][x]} childClickEv={onChildClick} />)
+
         }
     }
 
-    return <group>{hc}</group>
+    return <group>
+        {hc}</group>
 
 }
 
@@ -161,30 +173,27 @@ function updateCell(arr, hexMetric, x, z, newY) {
     genCoreFace(arr, x, z);
 
 
-    genBridgeFace(arr, x, z, hexMetric);
+    genBridge_Face_vtColor(arr, x, z, hexMetric);
     if (arr[z][x].neighbor.W !== null) {
-        genBridgeFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric);
+        genBridge_Face_vtColor(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric);
     }
     if (arr[z][x].neighbor.NE !== null) {
-        genBridgeFace(arr, arr[z][x].neighbor.NE.x, arr[z][x].neighbor.NE.z, hexMetric);
+        genBridge_Face_vtColor(arr, arr[z][x].neighbor.NE.x, arr[z][x].neighbor.NE.z, hexMetric);
     }
     if (arr[z][x].neighbor.NW !== null) {
-        genBridgeFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric);
+        genBridge_Face_vtColor(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric);
     }
 
 
-    genJointFace(arr, x, z, hexMetric);
-    if (arr[z][x].neighbor.SW !== null)
-    {
-        genJointFace(arr, arr[z][x].neighbor.SW.x, arr[z][x].neighbor.SW.z, hexMetric)
+    genJoint_Face_vtColor(arr, x, z, hexMetric);
+    if (arr[z][x].neighbor.SW !== null) {
+        genJoint_Face_vtColor(arr, arr[z][x].neighbor.SW.x, arr[z][x].neighbor.SW.z, hexMetric)
     }
-    if (arr[z][x].neighbor.W !== null)
-    {
-        genJointFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric)
+    if (arr[z][x].neighbor.W !== null) {
+        genJoint_Face_vtColor(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric)
     }
-    if (arr[z][x].neighbor.NW !== null)
-    {
-        genJointFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric)
+    if (arr[z][x].neighbor.NW !== null) {
+        genJoint_Face_vtColor(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric)
     }
 }
 
@@ -192,8 +201,7 @@ function genCoreFace(arr, x, z) {
     arr[z][x].faces.core = triangulateHexCore(arr[z][x].vertices.core)
 }
 
-
-function genBridgeFace(arr, x, z, hexMetric) {
+function genBridge_Face_vtColor(arr, x, z, hexMetric) {
     if (arr[z][x].neighbor.E !== null) {
         arr[z][x].faces.bridge.E = triangulateBridge(
             arr[z][x].vertices.core[4],
@@ -202,6 +210,7 @@ function genBridgeFace(arr, x, z, hexMetric) {
             arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].vertices.core[1],
             [2 * hexMetric.innerRadius, 0, 0]
         )
+        arr[z][x].vertexColor.bridge.E = createVertexColorBridge(arr[z][x].mainColor, arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor);
     }
     if (arr[z][x].neighbor.SE !== null) {
         arr[z][x].faces.bridge.SE = triangulateBridge(
@@ -211,6 +220,7 @@ function genBridgeFace(arr, x, z, hexMetric) {
             arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].vertices.core[2],
             [hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius]
         )
+        arr[z][x].vertexColor.bridge.SE = createVertexColorBridge(arr[z][x].mainColor, arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].mainColor);
     }
     if (arr[z][x].neighbor.SW !== null) {
         arr[z][x].faces.bridge.SW = triangulateBridge(
@@ -220,38 +230,40 @@ function genBridgeFace(arr, x, z, hexMetric) {
             arr[arr[z][x].neighbor.SW.z][arr[z][x].neighbor.SW.x].vertices.core[3],
             [-hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius]
         )
+
+        arr[z][x].vertexColor.bridge.SW = createVertexColorBridge(arr[z][x].mainColor, arr[arr[z][x].neighbor.SW.z][arr[z][x].neighbor.SW.x].mainColor);
     }
 }
 
-function genJointFace(arr, x, z, hexMetric) {
-    if ((arr[z][x].neighbor.NE !== null) && (arr[z][x].neighbor.E !== null)) 
-    {
+function genJoint_Face_vtColor(arr, x, z, hexMetric) {
+    if ((arr[z][x].neighbor.NE !== null) && (arr[z][x].neighbor.E !== null)) {
         arr[z][x].faces.joint.NE = triangulateJoint(
             arr[z][x].vertices.core[4],
             arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].vertices.core[0],
             arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].vertices.core[2],
             [hexMetric.innerRadius, 0, -1.5 * hexMetric.outerRadius],
             [2 * hexMetric.innerRadius, 0, 0]
-            )
+        )
+
+        arr[z][x].vertexColor.joint.NE = createVertexColorJoint(arr[z][x].mainColor,
+            arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].mainColor,
+            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor);
     }
-    if ((arr[z][x].neighbor.E !== null) && (arr[z][x].neighbor.SE !== null)) 
-    {
+    if ((arr[z][x].neighbor.E !== null) && (arr[z][x].neighbor.SE !== null)) {
         arr[z][x].faces.joint.SE = triangulateJoint(
             arr[z][x].vertices.core[5],
             arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].vertices.core[1],
             arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].vertices.core[3],
             [2 * hexMetric.innerRadius, 0, 0],
-            [ hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius],
-            )
+            [hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius],
+        )
+
+        arr[z][x].vertexColor.joint.SE = createVertexColorJoint(arr[z][x].mainColor,
+            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor,
+            arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].mainColor);
     }
-    
+
 }
-
-
-
-
-
-
 
 function triangulateHexCore(cell_core_vt) {
     var res = [];
@@ -275,13 +287,37 @@ function triangulateBridge(ori_idx_1, ori_idx_2, target_idx_1, target_idx_2, off
 
     return bf;
 }
+function createVertexColorBridge(origin_color, target_color) {
+    /** param type is THREE.Color */
+    var bc = [];
+    bc.push(target_color.r, target_color.g, target_color.b);
+    bc.push(origin_color.r, origin_color.g, origin_color.b);
+    bc.push(target_color.r, target_color.g, target_color.b);
 
-function triangulateJoint(ori_1, target_1, target_2, offset_target_1, offset_target_2)
-{   var tf = [];
-    tf.push(target_1[0] + offset_target_1[0]);  tf.push(target_1[1]); tf.push(target_1[2]+ + offset_target_1[2]);
-    tf.push(ori_1[0]);  tf.push(ori_1[1]); tf.push(ori_1[2]);
-    tf.push(target_2[0] + offset_target_2[0]);  tf.push(target_2[1]); tf.push(target_2[2]+ + offset_target_2[2]);
+    bc.push(target_color.r, target_color.g, target_color.b);
+    bc.push(origin_color.r, origin_color.g, origin_color.b);
+    bc.push(origin_color.r, origin_color.g, origin_color.b);
+
+    return bc;
+}
+
+function triangulateJoint(ori_1, target_1, target_2, offset_target_1, offset_target_2) {
+    var tf = [];
+    tf.push(target_1[0] + offset_target_1[0]); tf.push(target_1[1]); tf.push(target_1[2] + + offset_target_1[2]);
+    tf.push(ori_1[0]); tf.push(ori_1[1]); tf.push(ori_1[2]);
+    tf.push(target_2[0] + offset_target_2[0]); tf.push(target_2[1]); tf.push(target_2[2] + + offset_target_2[2]);
     return tf;
+}
+
+function createVertexColorJoint(origin_color, target_1_color, target_2_color) {
+    /** param type is THREE.Color */
+    var bc = [];
+    bc.push(target_1_color.r, target_1_color.g, target_1_color.b);
+    bc.push(origin_color.r, origin_color.g, origin_color.b);
+    bc.push(target_2_color.r, target_2_color.g, target_2_color.b);
+
+
+    return bc;
 }
 
 function setNeighbor(arr) {
@@ -346,146 +382,6 @@ function setNeighbor(arr) {
             }
         }
     }
-
-}
-
-function updatevertices() {
-
-}
-function updateFaces() {
-
-}
-
-//export function HexCell(props) {
-const HexCell = React.forwardRef(
-    (props, ref) => {
-
-        const coolAlert = () => {
-            //alert("x:" + props.info.idx.x + ", z:" + props.info.idx.z);
-            setCellInfo(!cellInfo);
-        };
-        useImperativeHandle(ref, () => ({ coolAlert }));
-
-        const [cellInfo, setCellInfo] = useState(false)
-        var ss = [];
-        props.info.vertices.outer.forEach(a => {
-            ss.push(a[0]); ss.push(a[1]); ss.push(a[2]);
-        });
-
-        var connerV = new Float32Array(ss);
-
-        var vertices = new Float32Array(props.info.faces.core);
-
-
-        const update = useCallback(self => {
-            self.needsUpdate = true
-            self.parent.computeBoundingSphere()
-        }, [])
-
-        const [hovered, setHover] = useState(false)
-        return (
-            <group position={props.info.position}>
-                <mesh
-                    onClick={(e) => { e.stopPropagation(); props.childClickEv(props.info.idx); setCellInfo(!cellInfo);     }}
-                onPointerOver={(e) =>{ e.stopPropagation(); setHover(true)}}
-                onPointerOut={(e) => {e.stopPropagation(); setHover(false)} } 
-                >
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={vertices}
-                            count={vertices.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color={hovered ? 'hotpink' : 'orange'} />
-                    {/* <meshBasicMaterial attach="material" color='orange' /> */}
-                </mesh>
-                {props.info.neighbor.SW && <mesh>
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={new Float32Array(props.info.faces.bridge.SW)}
-                            count={props.info.faces.bridge.SW.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color='blue' />
-                </mesh>}
-                {props.info.neighbor.E && <mesh>
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={new Float32Array(props.info.faces.bridge.E)}
-                            count={props.info.faces.bridge.E.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color='blue' />
-                </mesh>}
-                {props.info.neighbor.SE && <mesh>
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={new Float32Array(props.info.faces.bridge.SE)}
-                            count={props.info.faces.bridge.SE.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color='blue' />
-                </mesh>}
-
-             
-                {props.info.faces.joint.NE && <mesh>
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={new Float32Array(props.info.faces.joint.NE)}
-                            count={props.info.faces.joint.NE.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color='green' />
-                </mesh>}
-                {props.info.faces.joint.SE && <mesh>
-                    <bufferGeometry attach="geometry" >
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={new Float32Array(props.info.faces.joint.SE)}
-                            count={props.info.faces.joint.SE.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <meshBasicMaterial attach="material" color='green' />
-                </mesh>}
-
-                <line>
-                    <bufferGeometry attach="geometry">
-                        <bufferAttribute
-                            attachObject={['attributes', 'position']}
-                            array={connerV}
-                            count={connerV.length / 3}
-                            itemSize={3}
-                            onUpdate={update}
-                        />
-                    </bufferGeometry>
-                    <lineBasicMaterial name="material" color='green' />
-                </line>
-            </group>
-        );
-    }
-);
-
-
-
-
-function HexCore(props) {
 
 }
 
