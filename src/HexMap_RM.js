@@ -36,6 +36,9 @@ export function HexMap(props) {
 
         genAlignPoints(cell_outer_vt[i], cell_outer_vt[i + 1], 5).map(a => vt.push(a));
     }
+
+
+    var stepThreshold = 0.25;
     // vt.push(cell_outer_vt[cell_outer_vt.length - 1]);
 
 
@@ -88,18 +91,21 @@ export function HexMap(props) {
                 },
                 bridge: {
                     E: {
+                        type: null,
                         quad: [],
                         vertices: [],
                         faces: [],
                         vtColor: []
                     },
                     SE: {
+                        type: null,
                         quad: [],
                         vertices: [],
                         faces: [],
                         vtColor: []
                     },
                     SW: {
+                        type: null,
                         quad: [],
                         vertices: [],
                         faces: [],
@@ -143,16 +149,17 @@ export function HexMap(props) {
     for (var z = 0; z < props.size.z; z++) {
         for (var x = 0; x < props.size.x; x++) {
             genCoreFace(hexCells, x, z);
-            genBridgeFace(hexCells, x, z, hexMetric);
+            genBridgeFace(hexCells, x, z, hexMetric, stepThreshold);
             genJointFace(hexCells, x, z, hexMetric);
         }
     }
+
 
     var onChildClick = (e) => {
 
         // hexCells[e.z][e.x].mainColor = new THREE.Color('green');
 
-        updateCell(hexCells, hexMetric, e.x, e.z, hexCells[e.z][e.x].core.vertices[0][1] + 1);
+        updateCell(hexCells, hexMetric, e.x, e.z, hexCells[e.z][e.x].core.vertices[0][1] + stepThreshold, stepThreshold);
         //inputRef.current?.coolAlert()
         if (hexCells[e.z][e.x].neighbor.W !== null) {
             refArr[hexCells[e.z][e.x].neighbor.W.z][hexCells[e.z][e.x].neighbor.W.x].current?.coolAlert();
@@ -174,16 +181,16 @@ export function HexMap(props) {
             hc.push(<HexCell ref={refArr[z][x]} key={'z_' + z + '_x_' + x} info={hexCells[z][x]} childClickEv={onChildClick} />)
         }
     }
-    return <group>
-    {hc[1]}</group>
     // return <group>
-    //     {hc}</group>
+    //     {hc[1]}</group>
+    return <group>
+        {hc}</group>
 
 
 }
 
 
-function updateCell(arr, hexMetric, x, z, newY) {
+function updateCell(arr, hexMetric, x, z, newY, stepThreshold) {
 
     //update cell core
     for (var i = 0; i < arr[z][x].core.vertices.length; i++) {
@@ -191,31 +198,29 @@ function updateCell(arr, hexMetric, x, z, newY) {
         arr[z][x].elevation = newY;
     }
     genCoreFace(arr, x, z);
-    console.log(arr[z][x].elevation);
-
-    genBridgeFace(arr, x, z, hexMetric);
-
-    // if (arr[z][x].neighbor.W !== null) {
-    //     genBridgeFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric);
-    // }
-    // if (arr[z][x].neighbor.NE !== null) {
-    //     genBridgeFace(arr, arr[z][x].neighbor.NE.x, arr[z][x].neighbor.NE.z, hexMetric);
-    // }
-    // if (arr[z][x].neighbor.NW !== null) {
-    //     genBridgeFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric);
-    // }
+    genBridgeFace(arr, x, z, hexMetric, stepThreshold);
+    console.log(arr)
+    if (arr[z][x].neighbor.W !== null) {
+        genBridgeFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric, stepThreshold);
+    }
+    if (arr[z][x].neighbor.NE !== null) {
+        genBridgeFace(arr, arr[z][x].neighbor.NE.x, arr[z][x].neighbor.NE.z, hexMetric, stepThreshold);
+    }
+    if (arr[z][x].neighbor.NW !== null) {
+        genBridgeFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric, stepThreshold);
+    }
 
 
-    // genJointFace(arr, x, z, hexMetric);
-    // if (arr[z][x].neighbor.SW !== null) {
-    //     genJointFace(arr, arr[z][x].neighbor.SW.x, arr[z][x].neighbor.SW.z, hexMetric)
-    // }
-    // if (arr[z][x].neighbor.W !== null) {
-    //     genJointFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric)
-    // }
-    // if (arr[z][x].neighbor.NW !== null) {
-    //     genJointFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric)
-    // }
+    genJointFace(arr, x, z, hexMetric);
+    if (arr[z][x].neighbor.SW !== null) {
+        genJointFace(arr, arr[z][x].neighbor.SW.x, arr[z][x].neighbor.SW.z, hexMetric)
+    }
+    if (arr[z][x].neighbor.W !== null) {
+        genJointFace(arr, arr[z][x].neighbor.W.x, arr[z][x].neighbor.W.z, hexMetric)
+    }
+    if (arr[z][x].neighbor.NW !== null) {
+        genJointFace(arr, arr[z][x].neighbor.NW.x, arr[z][x].neighbor.NW.z, hexMetric)
+    }
 }
 
 
@@ -224,159 +229,159 @@ function genCoreFace(arr, x, z) {
     arr[z][x].core.faces = triangulateHexCore(arr[z][x].core.vertices)
 }
 
-function genBridgeFace(arr, x, z, hexMetric) {
+function genBridgeFace(arr, x, z, hexMetric, stepThreshold) {
     // E
-
-
     if (arr[z][x].neighbor.E !== null) {
-
+        // ref var;
+        var thisCell = arr[z][x];
+        var neighborCell = arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x];
         var offset = [(2 * hexMetric.innerRadius), 0, 0];
-        var targetCell_idx = arr[z][x].neighbor.E;
         var p1 = 20, p2 = 16, p3 = 4, p4 = 8;
+        thisCell.bridge.E.faces = [];
+        thisCell.bridge.E.vtColor = [];
+        thisCell.bridge.E.type = defineBridgeType(thisCell, neighborCell, stepThreshold);
 
-        arr[z][x].bridge.E.faces = [];
-        arr[z][x].bridge.E.vtColor = [];
-
-
-        if ( Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) <= 1
-        && Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) > 0
-        )
-        
-        {
-            var resTerrace = genBridgeTarraceQuad(arr[z][x], arr[targetCell_idx.z][targetCell_idx.x], p1, p2, p3, offset,
-                arr[z][x].mainColor, arr[targetCell_idx.z][targetCell_idx.x].mainColor, hexMetric);
+        if (thisCell.elevation == 0 && neighborCell.elevation == 0) {
+            for (var idx = 0; idx < 4; idx++) {
+                var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1 - idx, p1 - idx - 1, p3 + idx, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
+                var quadArr = resTerrace.quad;
+                var colorArr = resTerrace.vtColor;
+                for (var i = 0; i < quadArr.length; i++) {
+                    var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                    res.faces.forEach(i => thisCell.bridge.E.faces.push(i));
+                    res.vtColor.forEach(i => thisCell.bridge.E.vtColor.push(i));
+                }
+                thisCell.bridge.E.quad = quadArr;
+            }
+        } else if (Math.abs(thisCell.elevation - neighborCell.elevation) == stepThreshold) {
+            var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1, p2, p3, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
             var quadArr = resTerrace.quad;
             var colorArr = resTerrace.vtColor;
-            console.log(quadArr);
-            // for (var i = 0; i < quadArr.length; i++) {
-            for (var i = 0; i < quadArr.length -1; i++) {
-                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    [0, 0, 0], colorArr[i][0],
-                    colorArr[i][0]
-                );
-                res.faces.forEach(i => arr[z][x].bridge.E.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.E.vtColor.push(i));
+            for (var i = 0; i < quadArr.length; i++) {
+                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                res.faces.forEach(i => thisCell.bridge.E.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.E.vtColor.push(i));
             }
+            thisCell.bridge.E.quad = quadArr;
         }
         else {
             var quadArr = [];
             for (var i = 0; i < 4; i++) {
-                quadArr.push([arr[z][x].core.vertices[p2 + i + 1], arr[z][x].core.vertices[p2 + i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - 1 - i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - i]])
+                quadArr.push([thisCell.core.vertices[p2 + i + 1], thisCell.core.vertices[p2 + i],
+                neighborCell.core.vertices[p4 - 1 - i], neighborCell.core.vertices[p4 - i]])
             }
-
             for (var i = 0; i < quadArr.length; i++) {
                 var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    offset,
-                    // colortoArr(arr[z][x].mainColor),
-                    // colortoArr(arr[targetCell_idx.z][targetCell_idx.x].mainColor)
-                    [1, 0, 0],
-                    [1, 0, 0]
-
-                );
-
-                res.faces.forEach(i => arr[z][x].bridge.E.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.E.vtColor.push(i));
+                    offset, colortoArr(thisCell.mainColor), colortoArr(neighborCell.mainColor));
+                res.faces.forEach(i => thisCell.bridge.E.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.E.vtColor.push(i));
             }
+            thisCell.bridge.E.quad = quadArr;
         }
-
     }
-
-
-    /*
     //SE
     if (arr[z][x].neighbor.SE !== null) {
+        // ref var;
+        var thisCell = arr[z][x];
+        var neighborCell = arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x];
         var offset = [hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius];
-        var targetCell_idx = arr[z][x].neighbor.SE;
         var p1 = 24, p2 = 20, p3 = 8, p4 = 12;
-        arr[z][x].bridge.SE.faces = [];
-        arr[z][x].bridge.SE.vtColor = [];
+        thisCell.bridge.SE.faces = [];
+        thisCell.bridge.SE.vtColor = [];
+        thisCell.bridge.SE.type = defineBridgeType(thisCell, neighborCell, stepThreshold);
 
-        // if ((Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) > 0)
-        // &&(Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) <= 1)
-        // ) 
-        if (Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) == 1) {
-            var resTerrace = genBridgeTarraceQuad(arr[z][x], arr[targetCell_idx.z][targetCell_idx.x], p1, p2, p3, offset,
-                arr[z][x].mainColor, arr[targetCell_idx.z][targetCell_idx.x].mainColor, hexMetric);
+        if (thisCell.elevation == 0 && neighborCell.elevation == 0) {
+            for (var idx = 0; idx < 4; idx++) {
+                var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1 - idx, p1 - idx - 1, p3 + idx, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
+                var quadArr = resTerrace.quad;
+                var colorArr = resTerrace.vtColor;
+                for (var i = 0; i < quadArr.length; i++) {
+                    var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                    res.faces.forEach(i => thisCell.bridge.SE.faces.push(i));
+                    res.vtColor.forEach(i => thisCell.bridge.SE.vtColor.push(i));
+                }
+                thisCell.bridge.SE.quad = quadArr;
+            }
+        } else if (Math.abs(thisCell.elevation - neighborCell.elevation) == stepThreshold) {
+            var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1, p2, p3, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
             var quadArr = resTerrace.quad;
             var colorArr = resTerrace.vtColor;
             for (var i = 0; i < quadArr.length; i++) {
-                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    [0, 0, 0], colorArr[i][0],
-                    colorArr[i][0]
-                );
-                res.faces.forEach(i => arr[z][x].bridge.SE.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.SE.vtColor.push(i));
+                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                res.faces.forEach(i => thisCell.bridge.SE.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.SE.vtColor.push(i));
             }
+            thisCell.bridge.SE.quad = quadArr;
         }
         else {
-           
             var quadArr = [];
             for (var i = 0; i < 4; i++) {
-                quadArr.push([arr[z][x].core.vertices[p2 + i + 1], arr[z][x].core.vertices[p2 + i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - 1 - i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - i]])
+                quadArr.push([thisCell.core.vertices[p2 + i + 1], thisCell.core.vertices[p2 + i],
+                neighborCell.core.vertices[p4 - 1 - i], neighborCell.core.vertices[p4 - i]])
             }
             for (var i = 0; i < quadArr.length; i++) {
                 var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    offset, colortoArr(arr[z][x].mainColor),
-                    colortoArr(arr[targetCell_idx.z][targetCell_idx.x].mainColor)
-                );
-                res.faces.forEach(i => arr[z][x].bridge.SE.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.SE.vtColor.push(i));
+                    offset, colortoArr(thisCell.mainColor), colortoArr(neighborCell.mainColor));
+                res.faces.forEach(i => thisCell.bridge.SE.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.SE.vtColor.push(i));
             }
+            thisCell.bridge.SE.quad = quadArr;
         }
 
     }
-    */
-
-    /*
     //SW
     if (arr[z][x].neighbor.SW !== null) {
-        var offset = [-hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius]
-        var targetCell_idx = arr[z][x].neighbor.SW;
-        var p1 = 4, p2 = 0, p3 = 12, p4 = 16;
-        arr[z][x].bridge.SW.faces = [];
-        arr[z][x].bridge.SW.vtColor = [];
 
-        // if ((Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) > 0)
-        // &&(Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) <= 1)
-        // ) 
-        if (Math.abs(arr[targetCell_idx.z][targetCell_idx.x].elevation - arr[z][x].elevation) <= 1) {
-            var resTerrace = genBridgeTarraceQuad(arr[z][x], arr[targetCell_idx.z][targetCell_idx.x], p1, p2, p3, offset,
-                arr[z][x].mainColor, arr[targetCell_idx.z][targetCell_idx.x].mainColor, hexMetric);
+        var thisCell = arr[z][x];
+        var neighborCell = arr[arr[z][x].neighbor.SW.z][arr[z][x].neighbor.SW.x];
+        var offset = [-hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius]
+        var p1 = 4, p2 = 0, p3 = 12, p4 = 16;
+        thisCell.bridge.SW.faces = [];
+        thisCell.bridge.SW.vtColor = [];
+        thisCell.bridge.SW.type = defineBridgeType(thisCell, neighborCell, stepThreshold);
+
+        if (thisCell.elevation == 0 && neighborCell.elevation == 0) {
+            for (var idx = 0; idx < 4; idx++) {
+                var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1 - idx, p1 - idx - 1, p3 + idx, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
+                var quadArr = resTerrace.quad;
+                var colorArr = resTerrace.vtColor;
+                for (var i = 0; i < quadArr.length; i++) {
+                    var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                    res.faces.forEach(i => thisCell.bridge.SW.faces.push(i));
+                    res.vtColor.forEach(i => thisCell.bridge.SW.vtColor.push(i));
+                }
+                thisCell.bridge.SW.quad = quadArr;
+            }
+        } else if (Math.abs(thisCell.elevation - neighborCell.elevation) == stepThreshold) {
+            var resTerrace = genBridgeTarraceQuad(thisCell, neighborCell, p1, p2, p3, offset, thisCell.mainColor, neighborCell.mainColor, hexMetric);
             var quadArr = resTerrace.quad;
             var colorArr = resTerrace.vtColor;
             for (var i = 0; i < quadArr.length; i++) {
-                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    [0, 0, 0], colorArr[i][0],
-                    colorArr[i][0]
-                );
-                res.faces.forEach(i => arr[z][x].bridge.SW.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.SW.vtColor.push(i));
+                var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3], [0, 0, 0], colorArr[i][0], colorArr[i][0]);
+                res.faces.forEach(i => thisCell.bridge.SW.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.SW.vtColor.push(i));
             }
+            thisCell.bridge.SW.quad = quadArr;
         }
         else {
             var quadArr = [];
             for (var i = 0; i < 4; i++) {
-                quadArr.push([arr[z][x].core.vertices[p2 + i + 1], arr[z][x].core.vertices[p2 + i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - 1 - i],
-                arr[targetCell_idx.z][targetCell_idx.x].core.vertices[p4 - i]])
+                quadArr.push([thisCell.core.vertices[p2 + i + 1], thisCell.core.vertices[p2 + i],
+                neighborCell.core.vertices[p4 - 1 - i], neighborCell.core.vertices[p4 - i]])
             }
             for (var i = 0; i < quadArr.length; i++) {
                 var res = genFace_vtColor_FromQuad(quadArr[i][0], quadArr[i][1], quadArr[i][2], quadArr[i][3],
-                    offset, colortoArr(arr[z][x].mainColor),
-                    colortoArr(arr[targetCell_idx.z][targetCell_idx.x].mainColor)
-
-                );
-                res.faces.forEach(i => arr[z][x].bridge.SW.faces.push(i));
-                res.vtColor.forEach(i => arr[z][x].bridge.SW.vtColor.push(i));
+                    offset, colortoArr(thisCell.mainColor), colortoArr(neighborCell.mainColor));
+                res.faces.forEach(i => thisCell.bridge.SW.faces.push(i));
+                res.vtColor.forEach(i => thisCell.bridge.SW.vtColor.push(i));
             }
+            thisCell.bridge.SW.quad = quadArr;
         }
 
+
     }
-    */
+
+
     function genBridgeTarraceQuad(thisCell, targetCell, thisCell_p1, thisCell_p2, targetCell_p1, targetCell_offset, thisCell_color, targetCell_color, hexMetric) {
         var totalStepLevel = 3;
         var stepHeight = (targetCell.elevation - thisCell.elevation) / totalStepLevel;
@@ -450,113 +455,124 @@ function genBridgeFace(arr, x, z, hexMetric) {
 
         return { quad: quadArr, vtColor: blendedColor };
     }
-    /*
-    function genBridgeTarraceQuad(thisCell, targetCell, thisCell_p1, thisCell_p2, targetCell_p1, targetCell_offset, thisCell_color, targetCell_color, hexMetric) {
-        var totalStepLevel = 3;
-        var stepHeight = (targetCell.elevation - thisCell.elevation) / totalStepLevel;
-        var bridgeHorizontalLength = 2 * (hexMetric.outerRadius - hexMetric.innerRadius);
-        var stepLength = bridgeHorizontalLength / (totalStepLevel)
-        var stepRatio = (totalStepLevel * 2) - 1;
-
-        var direction = [
-            targetCell.core.vertices[targetCell_p1][0] + targetCell_offset[0] - thisCell.core.vertices[thisCell_p1][0],
-            0,
-            targetCell.core.vertices[targetCell_p1][2] + targetCell_offset[2] - thisCell.core.vertices[thisCell_p1][2],
-        ]
-        var quadArr = [];
-        var startPoint_1 = thisCell_p1;
-        var startPoint_2 = thisCell_p2;
-        var currentP1 = arr[z][x].core.vertices[startPoint_1];
-        var currentP2 = arr[z][x].core.vertices[startPoint_2];
-        var nextP_1 = [];
-        var nextP_2 = [];
-
-
-
-        var blendedColor = [];
-
-
-
-
-        for (var i = 0; i < stepRatio; i++) {
-            //slope
-            if (i % 2 == 0) {
-                nextP_1 = [currentP1[0] + (direction[0] / stepRatio), currentP1[1] + stepHeight, currentP1[2] + (direction[2] / stepRatio)]
-                nextP_2 = [currentP2[0] + (direction[0] / stepRatio), currentP2[1] + stepHeight, currentP2[2] + (direction[2] / stepRatio)]
-            }
-            //step
-            else {
-                nextP_1 = [currentP1[0] + (direction[0] / stepRatio), currentP1[1], currentP1[2] + (direction[2] / stepRatio)]
-                nextP_2 = [currentP2[0] + (direction[0] / stepRatio), currentP2[1], currentP2[2] + (direction[2] / stepRatio)]
-            }
-            quadArr.push([currentP1, currentP2, nextP_1, nextP_2]);
-
-            var blendC = [];
-
-            blendC.push([
-                targetCell_color.r * ((i) / stepRatio) + thisCell_color.r * ((stepRatio - i) / stepRatio),
-                targetCell_color.g * ((i) / stepRatio) + thisCell_color.g * ((stepRatio - i) / stepRatio),
-                targetCell_color.b * ((i) / stepRatio) + thisCell_color.b * ((stepRatio - i) / stepRatio),
-            ]);
-            blendC.push([
-                targetCell_color.r * ((i) / stepRatio) + thisCell_color.r * ((stepRatio - i) / stepRatio),
-                targetCell_color.g * ((i) / stepRatio) + thisCell_color.g * ((stepRatio - i) / stepRatio),
-                targetCell_color.b * ((i) / stepRatio) + thisCell_color.b * ((stepRatio - i) / stepRatio),
-            ]);
-            blendC.push([
-                targetCell_color.r * ((i) / stepRatio) + thisCell_color.r * ((stepRatio - i) / stepRatio),
-                targetCell_color.g * ((i) / stepRatio) + thisCell_color.g * ((stepRatio - i) / stepRatio),
-                targetCell_color.b * ((i) / stepRatio) + thisCell_color.b * ((stepRatio - i) / stepRatio),
-            ]);
-            blendC.push([
-                targetCell_color.r * ((i) / stepRatio) + thisCell_color.r * ((stepRatio - i) / stepRatio),
-                targetCell_color.g * ((i) / stepRatio) + thisCell_color.g * ((stepRatio - i) / stepRatio),
-                targetCell_color.b * ((i) / stepRatio) + thisCell_color.b * ((stepRatio - i) / stepRatio),
-            ]);
-            blendedColor.push(blendC);
-
-
-
-
-            currentP1 = nextP_1.map(a => a);
-            currentP2 = nextP_2.map(a => a);
-        }
-
-        return { quad: quadArr, vtColor: blendedColor };
-    }
-    */
 }
 
 function genJointFace(arr, x, z, hexMetric) {
-    if ((arr[z][x].neighbor.NE !== null) && (arr[z][x].neighbor.E !== null)) {
-        arr[z][x].joint.NE.faces = triangulateJoint(
-            arr[z][x].core.vertices[16],
-            arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].core.vertices[0],
-            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].core.vertices[8],
-            [hexMetric.innerRadius, 0, -1.5 * hexMetric.outerRadius],
-            [2 * hexMetric.innerRadius, 0, 0]
-        )
+    // if ((arr[z][x].neighbor.NE !== null) && (arr[z][x].neighbor.E !== null)) {
+    //     arr[z][x].joint.NE.faces = triangulateJoint(
+    //         arr[z][x].core.vertices[16],
+    //         arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].core.vertices[0],
+    //         arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].core.vertices[8],
+    //         [hexMetric.innerRadius, 0, -1.5 * hexMetric.outerRadius],
+    //         [2 * hexMetric.innerRadius, 0, 0]
+    //     )
 
-        arr[z][x].joint.NE.vtColor = createVertexColorJoint(arr[z][x].mainColor,
-            arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].mainColor,
-            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor);
-    }
+    //     arr[z][x].joint.NE.vtColor = createVertexColorJoint(arr[z][x].mainColor,
+    //         arr[arr[z][x].neighbor.NE.z][arr[z][x].neighbor.NE.x].mainColor,
+    //         arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor);
+    // }
 
     if ((arr[z][x].neighbor.E !== null) && (arr[z][x].neighbor.SE !== null)) {
-        arr[z][x].joint.SE.faces = triangulateJoint(
-            arr[z][x].core.vertices[20],
-            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].core.vertices[4],
-            arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].core.vertices[12],
-            [2 * hexMetric.innerRadius, 0, 0],
-            [hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius],
-        )
+        var thisCell = arr[z][x];
+        var neighborCell_E = arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x];
+        var neighborCell_SE = arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x];
+        var offset1 = [2 * hexMetric.innerRadius, 0, 0];
+        var offset2 = [hexMetric.innerRadius, 0, 1.5 * hexMetric.outerRadius];
+        thisCell.joint.SE.faces = [];
+        thisCell.joint.SE.vtColor = [];
 
-        arr[z][x].joint.SE.vtColor = createVertexColorJoint(arr[z][x].mainColor,
-            arr[arr[z][x].neighbor.E.z][arr[z][x].neighbor.E.x].mainColor,
-            arr[arr[z][x].neighbor.SE.z][arr[z][x].neighbor.SE.x].mainColor);
+        if (thisCell.bridge.E.type == BridgeType.Flat && thisCell.bridge.SE.type == BridgeType.Flat && neighborCell_E.bridge.SW.type == BridgeType.Flat) {
+            // thisCell.joint.SE.faces = triangulateJoint(thisCell.core.vertices[20], neighborCell_E.core.vertices[4], neighborCell_SE.core.vertices[12], offset1, offset2)
+            // thisCell.joint.SE.vtColor = createVertexColorJoint(thisCell.mainColor, neighborCell_E.mainColor, neighborCell_SE.mainColor);
+        }
+        if (thisCell.bridge.E.type == BridgeType.Flat && thisCell.bridge.SE.type == BridgeType.StepUp && neighborCell_E.bridge.SW.type == BridgeType.StepUp) {
+            // thisCell.joint.SE.faces = triangulateJoint(thisCell.core.vertices[20], neighborCell_E.core.vertices[4], neighborCell_SE.core.vertices[12], offset1, offset2)
+            // thisCell.joint.SE.vtColor = createVertexColorJoint(thisCell.mainColor, neighborCell_E.mainColor, neighborCell_SE.mainColor);
+            // var res = genFace_vtColor_FromQuad(
+            //     thisCell.bridge.SE.quad[0][1], 
+            //     [
+            //         neighborCell_E.bridge.SW.quad[0][0][0] +offset1[0],
+            //         neighborCell_E.bridge.SW.quad[0][0][1] +offset1[1],
+            //         neighborCell_E.bridge.SW.quad[0][0][2] +offset1[2],
+            //     ],
+
+            //     thisCell.bridge.SE.quad[0][3],
+            //     [
+            //         neighborCell_E.bridge.SW.quad[0][2][0] +offset1[0],
+            //         neighborCell_E.bridge.SW.quad[0][2][1] +offset1[1],
+            //         neighborCell_E.bridge.SW.quad[0][2][2] +offset1[2],
+            //     ],   
+            //     [0,0,0], [1,0,0], [1,0,0]);
+            //         res.faces.forEach(i => thisCell.joint.SE.faces.push(i));
+            //         res.vtColor.forEach(i => thisCell.joint.SE.vtColor.push(i));
+            var count = 0;
+            for (var i = 0; i < 4; i++) {
+                count = 0;
+
+                var res = genFace_vtColor_FromQuad(
+                    thisCell.bridge.SE.quad[i][1],
+                    [
+                        neighborCell_E.bridge.SW.quad[i][0][0] + offset1[0],
+                        neighborCell_E.bridge.SW.quad[i][0][1] + offset1[1],
+                        neighborCell_E.bridge.SW.quad[i][0][2] + offset1[2],
+                    ],
+
+                    thisCell.bridge.SE.quad[i][3],
+                    [
+                        neighborCell_E.bridge.SW.quad[i][2][0] + offset1[0],
+                        neighborCell_E.bridge.SW.quad[i][2][1] + offset1[1],
+                        neighborCell_E.bridge.SW.quad[i][2][2] + offset1[2],
+                    ],
+                    [0, 0, 0], [
+
+                    thisCell.bridge.SW.vtColor[(i * 36)], thisCell.bridge.SW.vtColor[(i * 36) + 1], thisCell.bridge.SW.vtColor[(i * 36) + 2]
+                ], [
+
+                    neighborCell_E.bridge.SW.vtColor[(i * 36)], neighborCell_E.bridge.SW.vtColor[(i * 36) + 1], neighborCell_E.bridge.SW.vtColor[(i * 36) + 2]
+                ]);
+                res.faces.forEach(a => thisCell.joint.SE.faces.push(a));
+                res.vtColor.forEach(a => thisCell.joint.SE.vtColor.push(a));
+
+                if ((i + 1) % 2 == 0) {
+                    count++;
+                }
+            }
+
+
+        }
+
     }
 
 }
+
+function defineBridgeType(thisCell, targetCell, stepThreshold) {
+    if (thisCell.elevation == targetCell.elevation) {
+        return BridgeType.Flat;
+    }
+    else if (thisCell.elevation == targetCell.elevation + stepThreshold) {
+        return BridgeType.StepDown;
+    }
+    else if (thisCell.elevation > targetCell.elevation) {
+        return BridgeType.CliffDown;
+    }
+    else if (targetCell.elevation == thisCell.elevation + stepThreshold) {
+        return BridgeType.StepUp;
+    }
+    else if (targetCell.elevation > thisCell.elevation) {
+        return BridgeType.CliffUp;
+    }
+}
+
+const BridgeType = {
+    Flat: "Flat",
+    StepUp: "StepUp",
+    StepDown: "StepDown",
+    CliffUp: "CliffUp",
+    CliffDown: "CliffDown",
+}
+
+
+
 
 function triangulateJoint(ori_1, target_1, target_2, offset_target_1, offset_target_2) {
     var tf = [];
@@ -736,8 +752,6 @@ const HexCell = React.forwardRef(
 
         var connerV = new Float32Array(ss);
 
-        console.log(props.info.bridge.E.faces);
-
         var vertices = new Float32Array(props.info.core.faces);
 
         const update = useCallback(self => {
@@ -746,10 +760,10 @@ const HexCell = React.forwardRef(
             self.parent.computeVertexNormals();
         }, [])
         const updateBufferColor = useCallback(self => {
-			self.needsUpdate = true
-			// self.needsUpdate = true
-			// self.parent.computeBoundingSphere()
-		}, [])
+            self.needsUpdate = true
+            // self.needsUpdate = true
+            // self.parent.computeBoundingSphere()
+        }, [])
 
 
         const [hovered, setHover] = useState(false)
@@ -758,8 +772,8 @@ const HexCell = React.forwardRef(
             <group position={props.info.position}>
                 <mesh
                     onClick={(e) => { e.stopPropagation(); props.childClickEv(props.info.idx); setCellInfo(!cellInfo); }}
-                    // onPointerOver={(e) => { e.stopPropagation(); setHover(true) }}
-                    // onPointerOut={(e) => { e.stopPropagation(); setHover(false) }}
+                // onPointerOver={(e) => { e.stopPropagation(); setHover(true) }}
+                // onPointerOut={(e) => { e.stopPropagation(); setHover(false) }}
                 >
                     <bufferGeometry attach="geometry">
                         <bufferAttribute
@@ -771,9 +785,9 @@ const HexCell = React.forwardRef(
                         />
                     </bufferGeometry>
 
-                    <meshBasicMaterial attach="material" color={hovered ? 'hotpink' : props.info.mainColor} />
+                    <meshPhongMaterial attach="material" color={hovered ? 'hotpink' : props.info.mainColor} />
                 </mesh>
-                {(props.info.bridge.E.faces.length>0) && <mesh >
+                {(props.info.bridge.E.faces.length > 0) && <mesh >
                     <bufferGeometry attach="geometry" >
                         <bufferAttribute
                             attachObject={['attributes', 'position']}
